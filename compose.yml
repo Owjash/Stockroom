@@ -1,0 +1,34 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: smart_inventory
+      POSTGRES_USER: assistant
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-local-dev-only}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U assistant -d smart_inventory"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  postgres-test:
+    profiles: ["test"]
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: smart_inventory_test
+      POSTGRES_USER: assistant
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-local-dev-only}
+    ports:
+      - "127.0.0.1:5433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U assistant -d smart_inventory_test"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+volumes:
+  postgres-data:

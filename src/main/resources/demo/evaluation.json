@@ -1,0 +1,65 @@
+{
+  "cases": [
+    {
+      "question": "What is the minimum order quantity?",
+      "expectedPage": 1,
+      "unanswerable": false
+    },
+    {
+      "question": "What is the standard lead time?",
+      "expectedPage": 1,
+      "unanswerable": false
+    },
+    {
+      "question": "What must purchase orders include?",
+      "expectedPage": 1,
+      "unanswerable": false
+    },
+    {
+      "question": "When are orders accepted?",
+      "expectedPage": 1,
+      "unanswerable": false
+    },
+    {
+      "question": "Within how many calendar days may unopened products be returned?",
+      "expectedPage": 2,
+      "unanswerable": false
+    },
+    {
+      "question": "Who pays return freight for non-defective products?",
+      "expectedPage": 2,
+      "unanswerable": false
+    },
+    {
+      "question": "Are custom-assembled items eligible for change-of-mind returns?",
+      "expectedPage": 2,
+      "unanswerable": false
+    },
+    {
+      "question": "When must discrepancies be recorded?",
+      "expectedPage": 3,
+      "unanswerable": false
+    },
+    {
+      "question": "When must visible shipping damage be photographed?",
+      "expectedPage": 3,
+      "unanswerable": false
+    },
+    {
+      "question": "What is the warranty duration?",
+      "expectedPage": null,
+      "unanswerable": true
+    },
+    {
+      "question": "What discount applies to bulk purchases?",
+      "expectedPage": null,
+      "unanswerable": true
+    },
+    {
+      "question": "Which currencies are accepted for payment?",
+      "expectedPage": null,
+      "unanswerable": true
+    }
+  ],
+  "endToEnd": false
+}

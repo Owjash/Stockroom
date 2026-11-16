@@ -1,0 +1,47 @@
+{
+  "testSuites": [
+    {
+      "suite": "com.owjash.assistant.InventoryIntegrationTest",
+      "tests": 13,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "com.owjash.assistant.RetrievalMathTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "suite": "com.owjash.assistant.PgVectorIntegrationTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    },
+    {
+      "suite": "com.owjash.assistant.AnswerGuardTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  ],
+  "totalTests": 19,
+  "passed": 18,
+  "skipped": 1,
+  "frontendBuild": "passed",
+  "browserCoreWorkflow": "passed",
+  "liveOllama": "not tested",
+  "livePostgresqlPgvector": "not tested",
+  "frontendRedesign": {
+    "build": "passed",
+    "globalSearch": "passed",
+    "stockAlerts": "passed",
+    "lowStockFilter": "passed",
+    "salesPeriodSelector": "passed",
+    "backendChanged": false
+  }
+}
