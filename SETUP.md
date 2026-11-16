@@ -246,3 +246,23 @@ npm --prefix frontend run build
 ```
 
 Use your existing `-Dspring-boot.run.profiles=postgres,ai` flag when restarting if that is the configuration you were using. For Vite development mode, the frontend source changes reload through `npm run dev`.
+
+## Ollama command not found on macOS
+
+Open Ollama from Applications and allow terminal command installation
+if prompted. Then open a new terminal and run:
+
+```bash
+ollama --version
+```
+
+If the command is still unavailable, add Ollama to the current
+terminal session's PATH:
+
+```bash
+export PATH="/Applications/Ollama.app/Contents/Resources:$PATH"
+ollama --version
+```
+
+Keep the Ollama application running when using Stockroom's AI features.
+
