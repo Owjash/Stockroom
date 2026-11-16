@@ -30,6 +30,7 @@ class Product {
     @Version @com.fasterxml.jackson.annotation.JsonIgnore public long version;
     protected Product() {}
 }
+// owjash
 
 @Entity
 @Table(name="stock_order")
