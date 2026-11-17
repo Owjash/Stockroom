@@ -2,6 +2,11 @@ package com.owjash.assistant;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.owjash.assistant.ApiTypes.Answer;
+import com.owjash.assistant.ApiTypes.EvalCase;
+import com.owjash.assistant.ApiTypes.EvalRow;
+import com.owjash.assistant.ApiTypes.Evaluation;
+import com.owjash.assistant.ApiTypes.Source;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -10,6 +15,7 @@ import java.util.*;
 import static com.owjash.assistant.ApiTypes.*;
 
 @Service
+@Transactional
 public class DocumentService {
     private final Documents documents;
     private final Passages passages;
