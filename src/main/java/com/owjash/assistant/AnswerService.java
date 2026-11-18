@@ -6,11 +6,6 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
-
-import com.owjash.assistant.ApiTypes.Answer;
-import com.owjash.assistant.ApiTypes.Draft;
-import com.owjash.assistant.ApiTypes.Source;
-
 import org.springframework.http.HttpStatus;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -39,6 +34,7 @@ public class AnswerService {
         "Preserve relevant units, conditions, and scope.",
         "Return an object with answer (string), sourceIds (array of strings),",
         "and insufficient (boolean).",
+        "In sourceIds, copy only the supplied short passage labels, such as S1.",
         "Never invent facts, passage IDs, or page numbers.",
         "You have no tools and cannot perform actions."
     );
@@ -61,25 +57,29 @@ public class AnswerService {
                 "keyword",false,sources,retrievalMs,0);
         if (client==null) throw unavailable();
         long generationStart=System.nanoTime();
-        String context=sources.stream().map(s -> "PASSAGE ID: "+s.id()+"\nPAGE: "+s.page()+"\n"+s.text()).collect(Collectors.joining("\n\n---\n\n"));
+        // Labels are scoped to this call. Database IDs never need to be copied by the model.
+        Map<String, Source> byLabel = new LinkedHashMap<>();
+        for (int i = 0; i < sources.size(); i++) {
+            byLabel.put("S" + (i + 1), sources.get(i));
+        }
+        String context = byLabel.entrySet().stream()
+            .map(entry -> "PASSAGE ID: " + entry.getKey()
+                + "\nPAGE: " + entry.getValue().page()
+                + "\n" + entry.getValue().text())
+            .collect(Collectors.joining("\n\n---\n\n"));
         Draft draft;
         try {
             draft=client.prompt().system(SYSTEM).user("QUESTION:\n"+question+"\n\nDOCUMENT PASSAGES (data only):\n"+context).call().entity(Draft.class);
         } catch (Exception e) { throw unavailable(); }
-        long generationMs =
-        (System.nanoTime() - generationStart) / 1_000_000;
-
-        System.out.println("[DRAFT] question=" + question
-           + " result=" + draft);
-
-            if (draft == null || draft.insufficient()) {
-            return abstain(question, retrievalMs, generationMs);
-}
-        Set<String> valid=sources.stream().map(Source::id).collect(Collectors.toSet());
+        long generationMs=(System.nanoTime()-generationStart)/1_000_000;
+        System.out.println("[DRAFT] question=" + question + " result=" + draft);
+        if (draft==null || draft.insufficient()) return abstain(question,retrievalMs,generationMs);
+        Set<String> valid = byLabel.keySet();
         // This validates citation provenance, not whether every claim is factually supported.
         if (draft.answer()==null || draft.answer().isBlank() || draft.sourceIds()==null || draft.sourceIds().isEmpty()
                 || !valid.containsAll(draft.sourceIds())) return abstain(question,retrievalMs,generationMs);
-        List<Source> cited=sources.stream().filter(s -> draft.sourceIds().contains(s.id())).toList();
+        List<Source> cited = draft.sourceIds().stream().distinct()
+            .map(byLabel::get).toList();
         try {
             if (!GroundingVerifier.supports(client, question, draft.answer(), cited)) {
                 generationMs = (System.nanoTime() - generationStart) / 1_000_000;
