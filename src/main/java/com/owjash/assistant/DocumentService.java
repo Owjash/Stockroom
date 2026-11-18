@@ -80,12 +80,17 @@ public class DocumentService {
             long ms=(System.nanoTime()-start)/1_000_000;
             var pages=sources.stream().map(Source::page).distinct().toList();
             boolean abstained=endToEnd?answers.respond(c.question(),sources,ms).insufficient():sources.isEmpty();
-            boolean pass=c.unanswerable()?abstained:pages.contains(c.expectedPage());
+            boolean pass = c.unanswerable()
+                 ? abstained
+                 : pages.contains(c.expectedPage()) && !abstained;
             rows.add(new EvalRow(c.question(),c.expectedPage(),c.unanswerable(),abstained,pages,pass,ms));
         }
         int positive=(int)rows.stream().filter(r -> !r.unanswerable()).count();
         int negative=rows.size()-positive;
-        long positivePass=rows.stream().filter(r -> !r.unanswerable() && r.passed()).count();
+        long positivePass = rows.stream()
+            .filter(r -> !r.unanswerable()
+             && r.retrievedPages().contains(r.expectedPage()))
+                .count();
         long negativePass=rows.stream().filter(r -> r.unanswerable() && r.passed()).count();
         var times=rows.stream().mapToLong(EvalRow::retrievalMs).sorted().toArray();
         double median=times.length%2==0?(times[times.length/2-1]+times[times.length/2])/2.0:times[times.length/2];
