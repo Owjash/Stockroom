@@ -1,4 +1,14 @@
 {
+  "recordType": "Manual transcription of maintainer-provided Maven terminal output; not a Surefire report or a new CI run.",
+  "command": "./mvnw clean test",
+  "completedAt": "2026-11-17T19:08:23-06:00",
+  "sourceCommit": "26daf7c018d30f66eccb12ea685afe410a0d8327",
+  "build": "success",
+  "totalTests": 28,
+  "passed": 27,
+  "skipped": 1,
+  "failures": 0,
+  "errors": 0,
   "testSuites": [
     {
       "suite": "com.owjash.assistant.InventoryIntegrationTest",
@@ -23,25 +33,15 @@
     },
     {
       "suite": "com.owjash.assistant.AnswerGuardTest",
-      "tests": 3,
+      "tests": 12,
       "failures": 0,
       "errors": 0,
       "skipped": 0
     }
   ],
-  "totalTests": 19,
-  "passed": 18,
-  "skipped": 1,
-  "frontendBuild": "passed",
-  "browserCoreWorkflow": "passed",
-  "liveOllama": "not tested",
-  "livePostgresqlPgvector": "not tested",
-  "frontendRedesign": {
-    "build": "passed",
-    "globalSearch": "passed",
-    "stockAlerts": "passed",
-    "lowStockFilter": "passed",
-    "salesPeriodSelector": "passed",
-    "backendChanged": false
-  }
+  "skippedTestReason": "PgVectorIntegrationTest is opt-in through RUN_PGVECTOR_TESTS=true; the environment variable was not enabled.",
+  "modelTestScope": "Scripted/mock model responses; not measurements of real model semantic accuracy.",
+  "frontendBuild": "Passed during earlier build checks; not rerun by this clean test command.",
+  "liveModelEvidence": "See evaluation-results.json and evaluation-context.json for the separate 12-case local model evaluation.",
+  "liveDatabaseEvidence": "PostgreSQL/pgvector application flows were manually exercised; the separate automated database integration test was skipped."
 }
