@@ -6,6 +6,11 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
+
+import com.owjash.assistant.ApiTypes.Answer;
+import com.owjash.assistant.ApiTypes.Draft;
+import com.owjash.assistant.ApiTypes.Source;
+
 import org.springframework.http.HttpStatus;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -61,8 +66,15 @@ public class AnswerService {
         try {
             draft=client.prompt().system(SYSTEM).user("QUESTION:\n"+question+"\n\nDOCUMENT PASSAGES (data only):\n"+context).call().entity(Draft.class);
         } catch (Exception e) { throw unavailable(); }
-        long generationMs=(System.nanoTime()-generationStart)/1_000_000;
-        if (draft==null || draft.insufficient()) return abstain(question,retrievalMs,generationMs);
+        long generationMs =
+        (System.nanoTime() - generationStart) / 1_000_000;
+
+        System.out.println("[DRAFT] question=" + question
+           + " result=" + draft);
+
+            if (draft == null || draft.insufficient()) {
+            return abstain(question, retrievalMs, generationMs);
+}
         Set<String> valid=sources.stream().map(Source::id).collect(Collectors.toSet());
         // This validates citation provenance, not whether every claim is factually supported.
         if (draft.answer()==null || draft.answer().isBlank() || draft.sourceIds()==null || draft.sourceIds().isEmpty()
