@@ -1,6 +1,9 @@
 package com.owjash.assistant;
 
 import org.springframework.ai.chat.client.ChatClient;
+
+import com.owjash.assistant.ApiTypes.Source;
+
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -39,11 +42,17 @@ public final class GroundingVerifier {
             .map(s -> "PASSAGE ID: " + s.id() + "\n" + s.text())
             .collect(Collectors.joining("\n\n---\n\n"));
 
-        Verdict verdict = client.prompt().system(SYSTEM)
-            .user("QUESTION:\n" + question
-                + "\n\nPROPOSED ANSWER (may be wrong):\n" + answer
-                + "\n\nDOCUMENT PASSAGES:\n" + context)
-            .call().entity(Verdict.class);
+        Verdict verdict = client.prompt()
+                 .system(SYSTEM)
+                 .user("QUESTION:\n" + question
+                   + "\n\nPROPOSED ANSWER (may be wrong):\n" + answer
+                      + "\n\nDOCUMENT PASSAGES:\n" + context)
+                          .call()
+                          .entity(Verdict.class);
+
+System.out.println("[GROUNDING] question=" + question
+    + " proposedAnswer=" + answer
+    + " verdict=" + verdict);
 
         // A model/service error must not be counted as a successful abstention.
         if (verdict == null || verdict.answersQuestion() == null
