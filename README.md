@@ -1,75 +1,120 @@
 # Stockroom — Smart Inventory AI
 
-A learning project by Owjash Acharya: a Java/Spring Boot inventory app with a React interface, read-only AI tool calling, document RAG, and a retrieval evaluation harness.
+Stockroom is a local inventory application with a Spring Boot REST API, a React dashboard, read-only AI tools for database questions, and page-cited PDF question answering.
 
-The interface uses a charcoal sidebar, a soft-gray workspace, rounded white cards, and lime/lavender charts. The overview visualizes actual stock categories, health and recorded sales; global search, stock alerts, and the 7/30-day selector are connected to app data.
+Built by [Owjash Acharya](https://github.com/Owjash). The application starts with fictional sample data and supports both a core mode without AI and an optional local Ollama/PostgreSQL configuration.
 
-**Start with [SETUP.md](SETUP.md).** The core application works without Docker, an API key, or an AI model. Enable the optional AI and PostgreSQL profiles after the core works.
+## Features
 
-## What is implemented
+- **Inventory and suppliers:** product and supplier CRUD, unique SKUs, search, stock quantities, reorder thresholds, and dashboard totals.
+- **Sales and receipts:** multi-line orders, transactional stock updates, oversell rejection, rollback, ordered pessimistic row locks, and historical product/price snapshots.
+- **Inventory assistant:** Spring AI selects predefined read-only Java tools. Responses include database evidence from current records. The model has no arbitrary SQL or inventory write tools.
+- **Document assistant:** PDFBox extraction, page-preserving chunks of up to 1,200 characters with 180-character overlap, top-3 retrieval, page citations, and saved question/answer history.
+- **Answer checks:** short passage labels mapped back to stored sources, citation validation, a second model call to audit the proposed answer, and literal supporting-quote checks.
+- **Evaluation:** labeled questions, source-page hit rate @3, unsupported-question abstention, retrieval timing, and JSON export.
 
-- Product and supplier CRUD, SKU uniqueness, searchable inventory, reorder thresholds and dashboard totals.
-- Multi-line sales/receipts with database transactions and ordered pessimistic row locks. Failed orders roll back every line. Historical order names/prices are snapshots.
-- Sales summaries based on recorded sales, not forecasts. Currency is USD and reporting days use UTC.
-- Spring AI tool calling through predefined, read-only Java methods; the UI displays tool evidence. The model has no arbitrary SQL or write tools.
-- PDF ingestion using PDFBox, page-preserving chunks of at most 1,200 characters with 180-character overlap, top-3 retrieval and page references.
-- Ollama chat (`qwen2.5:3b`) and embeddings (`nomic-embed-text`) through Spring AI. Models are configurable.
-- PostgreSQL/pgvector exact cosine retrieval with document filtering. For local learning, file-backed H2 and a clearly labeled keyword baseline are available.
-- Persistent document question/answer history, PDF viewing, document deletion, a 3-page fictional policy and 12 labeled sample questions.
-- Evaluation: source-page hit rate @3, unsupported-question abstention, median/p95/mean retrieval latency, corpus counts and JSON export. Retrieval-only and end-to-end modes are distinguished.
-- Automated tests and a GitHub Actions workflow.
+Inventory questions and document questions use separate evidence. Ask about stock, products, suppliers, and recorded sales in **AI Assistant**. Ask about the selected PDF in **Documents**.
 
-This is a **local, single-workspace prototype**. It does not include user accounts, role-based access, multi-tenant isolation, deployed hosting, billing or demand forecasting. The server binds to localhost by default. Add authentication, authorization and operational hardening before making it a shared service.
+## Run locally
+
+Prerequisites: a full JDK 21 and Node.js 22.12 or a compatible later version. The Maven Wrapper is included.
+
+```sh
+git clone https://github.com/Owjash/Stockroom.git
+cd Stockroom
+npm --prefix frontend ci
+npm --prefix frontend run build
+chmod +x mvnw
+./mvnw spring-boot:run
+```
+
+Open [http://localhost:8080](http://localhost:8080). This starts the inventory app with file-backed H2 and a keyword document-retrieval baseline. It does not require Docker, an API key, or an AI model.
+
+For the local AI configuration used in the sample validation, install and start Docker Desktop and Ollama, then run:
+
+```sh
+docker compose up -d postgres
+docker compose ps
+ollama pull nomic-embed-text
+ollama pull qwen2.5:7b
+```
+
+Wait for PostgreSQL to be healthy. Stop the running Spring Boot process with **Control+C**, then start it with:
+
+```sh
+OLLAMA_CHAT_MODEL=qwen2.5:7b ./mvnw spring-boot:run -Dspring-boot.run.profiles=postgres,ai
+```
+
+Check [http://localhost:8080/api/status](http://localhost:8080/api/status) for the active model and retrieval configuration. The checked-in fallback chat model is `qwen2.5:3b`; the command above explicitly selects the `7b` model used for the recorded sample evaluation.
+
+See [SETUP.md](SETUP.md) for the staged setup, troubleshooting, development server, and optional PostgreSQL integration test.
 
 ## Stack and profiles
 
+Java 21, Spring Boot 3.5.7, Spring AI 1.1.8, React 19.2.0, Vite 7.1.12, JPA, PDFBox 3.0.5, PostgreSQL, pgvector, H2, and Ollama. Versions listed here describe the project's pinned dependencies.
+
 | Profile | Persistence | Retrieval | Generation |
 |---|---|---|---|
-| default | File-backed H2 | Keyword overlap baseline | Off |
-| `postgres` | PostgreSQL | Keyword overlap baseline | Off |
-| `ai` | File-backed H2 | In-Java cosine over persisted embeddings | Ollama |
+| Default | File-backed H2 | Keyword overlap | Off |
+| `postgres` | PostgreSQL | Keyword overlap | Off |
+| `ai` | File-backed H2 | Java cosine search over persisted embeddings | Ollama |
 | `postgres,ai` | PostgreSQL | pgvector exact cosine search | Ollama |
 
-Embeddings in the AI profile are cached by model name. If you replace a model's weights under the same model name, delete/re-upload documents to rebuild embeddings. Changing the name triggers re-embedding. This implementation scans a small corpus; it does not claim billion-vector scale or ANN indexing.
+Embeddings are cached by model name. Changing the configured embedding model name triggers re-embedding. If weights change under the same name, re-upload documents to rebuild their embeddings.
 
-## Request flow
+## How answers are checked
 
-Inventory question → Spring AI selects a predefined Java tool → transactional service reads current records → tool results return to the model → answer + raw evidence reach React.
+For inventory questions, Spring AI selects a predefined Java tool, the service reads the current database records, and React displays the response with the tool evidence.
 
-Document question → query embedding → document-filtered top-3 pgvector cosine search → selected passages → model answer → citation-ID validation → answer + cited passages reach React.
+For document questions, retrieval is scoped to the selected document. The answer model receives short labels such as `S1` rather than database UUIDs. The application validates the returned labels and maps them to the original sources. A separate call audits whether the proposed answer addresses the question and is supported by the cited passages. Supporting quotations must occur in those passages after whitespace normalization.
 
-PDF chunks remain within individual pages. Citation validation checks that IDs came from retrieved passages; it **does not prove that every generated claim is true**. Read the sources and evaluate factual support separately.
+Missing evidence or rejected support leads to an abstention. Model or auditor service errors return an error instead of being counted as successful abstentions. The model auditor can still misjudge meaning; matching citations and quotations do not prove factual correctness.
+
+## Recorded validation
+
+Local validation completed on **November 17, 2026**:
+
+| Check | Observed result |
+|---|---:|
+| `./mvnw clean test` | 27 passed, 1 optional pgvector test skipped; zero failures or errors |
+| Supported sample questions: expected page retrieved and no abstention | 9/9 |
+| Unsupported sample questions refused | 3/3 |
+| Supported sample questions incorrectly refused | 0/9 |
+| Median retrieval time in that run | 23.5 ms |
+
+The live run used `qwen2.5:7b`, `nomic-embed-text`, and PostgreSQL/pgvector against **one fictional PDF with three pages and three chunks**. These 12 questions were used during debugging. The export records retrieval and abstention, not generated-answer factual accuracy. Retrieval timing excludes answer generation and auditing.
+
+See [VALIDATION.md](VALIDATION.md), the [original evaluation export](validation/evaluation-results.json), its [configuration record](validation/evaluation-context.json), and the [test summary](validation/test-summary.json).
 
 ## Code map
 
-| File | What to learn |
+Java source files are under `src/main/java/com/owjash/assistant/`.
+
+| File | Responsibility |
 |---|---|
-| `InventoryController.java` | REST routes, request bodies and validation |
-| `InventoryModels.java` / `InventoryRepositories.java` | JPA entities, relationships, repositories |
-| `InventoryService.java` | Business logic, transactions, row locks and sales calculations |
-| `InventoryTools.java` / `InventoryAssistant.java` | Read-only tools and Spring AI integration |
+| `InventoryController.java` | REST endpoints and request validation |
+| `InventoryModels.java` / `InventoryRepositories.java` | JPA entities and repositories |
+| `InventoryService.java` | Stock updates, transactions, locks, and sales calculations |
+| `InventoryTools.java` / `InventoryAssistant.java` | Read-only database tools and inventory AI responses |
 | `PdfIngestor.java` | PDF extraction and page-aware chunking |
-| `Retriever.java` / `PgVectorIndex.java` | Embeddings, cosine similarity and SQL retrieval |
-| `AnswerService.java` | Context assembly, structured answers and citation checks |
-| `DocumentService.java` | Document lifecycle, history and evaluation |
-| `frontend/src/main.jsx` | React state, forms and API integration |
-| `src/test/java/` | API, rollback, concurrency, PDF and citation tests |
+| `Retriever.java` / `PgVectorIndex.java` | Embeddings, similarity search, and document scoping |
+| `AnswerService.java` | Structured document answers and citation-label mapping |
+| `GroundingVerifier.java` | Model audit and supporting-quote checks |
+| `DocumentService.java` | Transactional document operations, history, and evaluation |
+| `frontend/src/main.jsx` | React interface, state, and API calls |
+| `src/test/java/` | Inventory integration, retrieval, and answer-guard tests |
 
-All Java files are in `src/main/java/com/owjash/assistant/`. The package name is kept simple for the learning project.
+## Scope
 
-## Testing and limits
+This is a local, single-workspace prototype. It has no accounts, role-based access, multi-tenant isolation, hosted deployment, or demand forecasting. The server binds to localhost by default. Reports use USD and UTC days.
 
-See `VALIDATION.md` for what was actually checked in the build environment. Mock model tests validate application behavior; they are not measurements of Ollama's answer quality. Run the opt-in pgvector test and real-model evaluations on your machine before claiming those results on a resume.
+Limits include 10 documents, 10 MB per PDF, 150 pages and 500 chunks per document, 1,000 characters per question, and 50 cases per evaluation request. The interface shows 100 recent orders and 30 recent document answers. PDFs need selectable text; OCR and specialized diagram, equation, or table extraction are not implemented.
 
-Limits: 10 documents, 10 MB per PDF, 150 pages and 500 chunks per document; 1,000 characters per question; 50 evaluation cases per request; 100 recent orders and 30 recent document answers shown. PDFs must contain selectable text. Scans, diagrams, table structure and equations may require OCR or specialized parsing, which are not implemented.
+## References
 
-## Documentation
-
-- Spring AI tool calling: https://docs.spring.io/spring-ai/reference/1.1/api/tools.html
-- Spring AI RAG: https://docs.spring.io/spring-ai/reference/1.1/api/retrieval-augmented-generation.html
-- Ollama: https://ollama.com/download
-- Chat model: https://ollama.com/library/qwen2.5
-- Embedding model: https://ollama.com/library/nomic-embed-text
-- pgvector: https://github.com/pgvector/pgvector
-
-Versions are pinned for reproducibility: Java 21, Spring Boot 3.5.7, Spring AI 1.1.8, React 19.2.0, Vite 7.1.12, PDFBox 3.0.5. These are a compatible baseline, not a claim that every dependency is the latest release.
+- [Spring AI tool calling](https://docs.spring.io/spring-ai/reference/1.1/api/tools.html)
+- [Spring AI RAG](https://docs.spring.io/spring-ai/reference/1.1/api/retrieval-augmented-generation.html)
+- [Ollama](https://ollama.com/download)
+- [Qwen2.5 model](https://ollama.com/library/qwen2.5)
+- [nomic-embed-text model](https://ollama.com/library/nomic-embed-text)
+- [pgvector](https://github.com/pgvector/pgvector)

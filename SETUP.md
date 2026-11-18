@@ -1,4 +1,4 @@
-# Run Smart Inventory AI on your Mac
+# Run Stockroom on your Mac
 
 Follow these stages in order. Get the inventory app working first; enable AI afterward.
 
@@ -28,17 +28,16 @@ java -version
 
 ## 2. Open the project
 
-Download and expand `smart-inventory-ai.zip`. Move the extracted `smart-inventory-ai` folder into Downloads if needed. In VS Code, choose **File → Open Folder** and select that folder. Allow Maven to import when prompted.
-
-Open **Terminal → New Terminal** in VS Code. It should be inside the folder containing `pom.xml`, `mvnw`, and `frontend`.
-
-If using the macOS Terminal instead:
+Clone the repository, or open your existing checkout:
 
 ```sh
-cd ~/Downloads/smart-inventory-ai
+git clone https://github.com/Owjash/Stockroom.git
+cd Stockroom
 ```
 
-If macOS prompts about terminal access to Downloads, allow it for the folder you selected.
+For an existing checkout, use its actual folder name; it may still be named `smart-inventory-ai`. Open that folder in VS Code and allow Maven to import the project.
+
+Open **Terminal → New Terminal**. The terminal should be inside the project root containing `pom.xml`, `mvnw`, and `frontend`.
 
 ## 3. Build the React interface
 
@@ -80,7 +79,7 @@ The default document response is a retrieval baseline, not an AI-generated answe
 In a second terminal at the project root:
 
 ```sh
-./mvnw test
+./mvnw clean test
 ```
 
 The regular tests use a separate in-memory test database. They do not alter your normal application data and do not require an AI model. The pgvector test is skipped until explicitly enabled.
@@ -113,7 +112,7 @@ Install **Ollama**: https://ollama.com/download
 Open Ollama on your Mac. In a new terminal:
 
 ```sh
-ollama pull qwen2.5:3b
+ollama pull qwen2.5:7b
 ollama pull nomic-embed-text
 ollama list
 ```
@@ -123,8 +122,12 @@ The first download can take time. Local inference speed depends on your Mac. If 
 Stop Spring Boot with Control+C. With PostgreSQL and Ollama running, start:
 
 ```sh
-./mvnw spring-boot:run -Dspring-boot.run.profiles=postgres,ai
+OLLAMA_CHAT_MODEL=qwen2.5:7b ./mvnw spring-boot:run -Dspring-boot.run.profiles=postgres,ai
 ```
+
+The environment-variable prefix selects `qwen2.5:7b` for this launch. Include it when restarting to reproduce the recorded validation. Without an override, the checked-in configuration falls back to `qwen2.5:3b`; that model needs its own download and evaluation.
+
+Open [http://localhost:8080/api/status](http://localhost:8080/api/status) and verify `chatModel` is `qwen2.5:7b`, `aiEnabled` is `true`, `retrieval` is `semantic`, and `vectorStore` is `pgvector`. This endpoint reports configuration; a real request confirms the integrations respond.
 
 Open http://localhost:8080. The badge should read **AI configured**. This means the AI profile is enabled; the first request confirms whether the model server actually responds.
 
@@ -138,13 +141,13 @@ Expand **Database evidence** and compare it with Inventory/Orders. The assistant
 
 Try **Documents**:
 
-1. Load the fictional sample policy or upload a text-based PDF you are allowed to use.
+1. Select an existing copy of the fictional sample policy, load it once if absent, or upload a text-based PDF you are allowed to use. Repeatedly clicking **Load sample policy** creates duplicate documents.
 2. Ask `What is the minimum order quantity?`
 3. Check the answer, supporting passage, and PDF page.
 4. Ask an unsupported question, such as `What is the warranty duration?`
 5. Inspect whether the system abstains appropriately.
 
-With the `postgres,ai` profiles, the system embeds text with `nomic-embed-text`, uses pgvector cosine search, and generates answers with `qwen2.5:3b`. The default chunk target is 1,200 characters, overlap 180 characters, with top-3 retrieval and a heuristic 0.42 cosine threshold.
+With the `postgres,ai` profiles and the command above, the system embeds text with `nomic-embed-text`, uses pgvector cosine search, and generates answers with `qwen2.5:7b`. The chunk target is 1,200 characters, overlap 180 characters, with top-3 retrieval and a heuristic 0.42 cosine threshold. A second model call audits proposed answers against cited passages, followed by literal supporting-quote checks. These checks can still make semantic mistakes.
 
 If your Mac struggles with the model, use the core app while learning the backend. A different tool-capable Ollama chat model can be selected through `OLLAMA_CHAT_MODEL`; re-evaluate after changing models.
 
@@ -153,12 +156,14 @@ If your Mac struggles with the model, use the core app while learning the backen
 Open **Evaluation**, select the sample policy, and run its 12 labeled cases. Use sample labels only with the sample policy. For your own PDFs, write new questions and label the correct source pages.
 
 - Without **Include model abstention**, unsupported-question results measure only the retrieval threshold.
-- With that checkbox enabled, the system runs the answer model and scores its abstention on negative cases.
-- Source-page hit rate @3 checks whether the expected page appears among retrieved passages.
-- It does not automatically verify factual correctness, citation entailment or answer completeness. Review answers manually for those properties.
-- Median/p95 latency includes query embedding and retrieval; initial indexing/backfill can affect the first measurement.
+- With that checkbox enabled, the system runs the answer pipeline, including the evidence auditor when a draft is eligible for audit. Unsupported rows pass when it abstains. Supported rows need the expected page among retrieved results and no abstention.
+- Source-page hit rate @3 measures retrieval independently of answer abstention.
+- The evaluation does not score factual correctness, citation entailment, or answer completeness. The model auditor is a fallible guard, not a ground-truth evaluator; review actual answers against their sources.
+- Median/p95 retrieval timing includes query embedding and retrieval. It excludes generation and auditing; initial indexing/backfill can affect the first measurement.
 
-Use **Export results** to save the actual JSON report. The report includes the document/page/chunk counts and timestamp. Keep these with your model configuration and test questions. Do not put example percentages or sample-fixture performance on your resume as a real-world benchmark.
+Keep the evaluation tab open while the model calls finish. A service/model error is an error, not a successful abstention.
+
+Use **Export results** to save the actual JSON report. It includes document/page/chunk counts and a timestamp, but not the model names or generated answers. Keep the launch configuration and test questions with it. The recorded local sample run and its limits are documented in [VALIDATION.md](VALIDATION.md); do not describe it as a real-world answer-accuracy benchmark.
 
 For stronger evidence, evaluate distinct PDFs with 30–60 independently labeled questions, include unsupported questions, report failures, and compare the keyword baseline with the semantic version. Each UI run evaluates the selected PDF, so its document count is 1. Do not describe a single-document run as a multi-document benchmark.
 
@@ -203,7 +208,7 @@ java -jar target/smart-inventory-ai-0.1.0.jar
 For the full AI profile with a packaged JAR:
 
 ```sh
-java -jar target/smart-inventory-ai-0.1.0.jar --spring.profiles.active=postgres,ai
+OLLAMA_CHAT_MODEL=qwen2.5:7b java -jar target/smart-inventory-ai-0.1.0.jar --spring.profiles.active=postgres,ai
 ```
 
 ## What to study first
@@ -215,7 +220,7 @@ java -jar target/smart-inventory-ai-0.1.0.jar --spring.profiles.active=postgres,
 5. Trace a PDF through `PdfIngestor`, `Retriever`, `PgVectorIndex`, and `AnswerService`.
 6. Add your own evaluation cases; inspect errors instead of chasing a perfect score.
 
-The Spring course you shared supports stages 1–3: Spring Boot, REST, JPA, React and tests. Spring AI tools, PDF processing, embeddings, vector retrieval and evaluation are additional learning topics.
+The inventory routes and services are a starting point for studying Spring Boot, REST, JPA, transactions, and tests. The document pipeline adds PDF extraction, embeddings, vector retrieval, structured model output, and evaluation.
 
 ## Common problems
 
@@ -227,7 +232,8 @@ The Spring course you shared supports stages 1–3: Spring Boot, REST, JPA, Reac
 | Port 8080 is already used | Stop the other app, or pass `-Dspring-boot.run.arguments=--server.port=8081` and open port 8081. |
 | PostgreSQL connection refused | Open Docker Desktop; run `docker compose ps`; wait for PostgreSQL to be healthy. |
 | AI is not enabled | Restart Spring Boot with `-Dspring-boot.run.profiles=postgres,ai`. |
-| Model not found / 502 | Check `ollama list`, Ollama server status, and the configured model names. |
+| Model not found / 502 | Check `ollama list`, Ollama server status, and the names shown by `/api/status`. Invalid generator/auditor responses also produce 502; inspect the terminal error. |
+| PostgreSQL PDF error mentioning large objects and auto-commit | Verify `DocumentService` retains its class-level `@Transactional` annotation. |
 | No readable PDF text | Use a PDF with selectable text. OCR is not implemented. |
 | Incorrect or missing source | Inspect the PDF extraction and evaluation labels. Tune chunking/retrieval with evidence. |
 | New database looks empty/different | H2 and PostgreSQL are separate stores; automatic migration is not included. |
@@ -245,7 +251,7 @@ npm --prefix frontend run build
 ./mvnw spring-boot:run
 ```
 
-Use your existing `-Dspring-boot.run.profiles=postgres,ai` flag when restarting if that is the configuration you were using. For Vite development mode, the frontend source changes reload through `npm run dev`.
+For the recorded AI configuration, restart with `OLLAMA_CHAT_MODEL=qwen2.5:7b ./mvnw spring-boot:run -Dspring-boot.run.profiles=postgres,ai` instead of the core-only command above. For Vite development mode, frontend source changes reload through `npm run dev`.
 
 ## Ollama command not found on macOS
 
