@@ -1,12 +1,9 @@
 package com.owjash.assistant;
 
 import org.springframework.ai.chat.client.ChatClient;
-
-import com.owjash.assistant.ApiTypes.Source;
-
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import static com.owjash.assistant.ApiTypes.Source;
 
@@ -29,7 +26,8 @@ public final class GroundingVerifier {
         "Copy quotes from the passages verbatim. Do not write or paraphrase evidence.",
         "If either check fails, return evidence=[].",
         "Return an object with answersQuestion (boolean), fullySupported (boolean),",
-        "and evidence (array of objects with sourceId and quote)."
+        "and evidence (array of objects with sourceId and quote).",
+        "In sourceId, copy only the short passage labels supplied in this request, such as S1."
     );
 
     public record Evidence(String sourceId, String quote) {}
@@ -38,21 +36,24 @@ public final class GroundingVerifier {
 
     public static boolean supports(ChatClient client, String question,
                                    String answer, List<Source> sources) {
-        String context = sources.stream()
-            .map(s -> "PASSAGE ID: " + s.id() + "\n" + s.text())
+        Map<String, Source> available = new LinkedHashMap<>();
+        for (int i = 0; i < sources.size(); i++) {
+            available.put("S" + (i + 1), sources.get(i));
+        }
+        String context = available.entrySet().stream()
+            .map(entry -> "PASSAGE ID: " + entry.getKey()
+                + "\nPAGE: " + entry.getValue().page()
+                + "\n" + entry.getValue().text())
             .collect(Collectors.joining("\n\n---\n\n"));
 
-        Verdict verdict = client.prompt()
-                 .system(SYSTEM)
-                 .user("QUESTION:\n" + question
-                   + "\n\nPROPOSED ANSWER (may be wrong):\n" + answer
-                      + "\n\nDOCUMENT PASSAGES:\n" + context)
-                          .call()
-                          .entity(Verdict.class);
+        Verdict verdict = client.prompt().system(SYSTEM)
+            .user("QUESTION:\n" + question
+                + "\n\nPROPOSED ANSWER (may be wrong):\n" + answer
+                + "\n\nDOCUMENT PASSAGES:\n" + context)
+            .call().entity(Verdict.class);
 
-System.out.println("[GROUNDING] question=" + question
-    + " proposedAnswer=" + answer
-    + " verdict=" + verdict);
+        System.out.println("[GROUNDING] question=" + question
+            + " proposedAnswer=" + answer + " verdict=" + verdict);
 
         // A model/service error must not be counted as a successful abstention.
         if (verdict == null || verdict.answersQuestion() == null
@@ -62,8 +63,6 @@ System.out.println("[GROUNDING] question=" + question
         if (!verdict.answersQuestion() || !verdict.fullySupported()) return false;
         if (verdict.evidence() == null || verdict.evidence().isEmpty()) return false;
 
-        Map<String, Source> available = sources.stream()
-            .collect(Collectors.toMap(Source::id, Function.identity(), (a, b) -> a));
         for (Evidence evidence : verdict.evidence()) {
             if (evidence == null || evidence.sourceId() == null
                     || evidence.quote() == null) return false;
