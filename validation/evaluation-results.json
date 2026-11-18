@@ -1,0 +1,96 @@
+{
+  "mode": "semantic",
+  "count": 12,
+  "positiveCases": 9,
+  "negativeCases": 3,
+  "pageHitRateAt3": 1,
+  "abstentionAccuracy": 1,
+  "meanRetrievalMs": 66.83333333333333,
+  "medianRetrievalMs": 23.5,
+  "p95RetrievalMs": 346,
+  "abstentionBasis": "model decision",
+  "documents": 1,
+  "pages": 3,
+  "chunks": 3,
+  "generatedAt": "2026-11-18T01:04:32.400601Z",
+  "rows": [
+    {
+      "question": "What is the minimum order quantity?",
+      "expectedPage": 1,
+      "unanswerable": false,
+      "abstained": false,
+      "retrievedPages": [
+        1,
+        3,
+        2
+      ],
+      "passed": true,
+      "retrievalMs": 346
+    },
+    {
+      "question": "What is the standard lead time?",
+      "expectedPage": 1,
+      "unanswerable": false,
+      "abstained": false,
+      "retrievedPages": [
+        1,
+        3,
+        2
+      ],
+      "passed": true,
+      "retrievalMs": 20
+    },
+    {
+      "question": "What must purchase orders include?",
+      "expectedPage": 1,
+      "unanswerable": false,
+      "abstained": false,
+      "retrievedPages": [
+        1,
+        3,
+        2
+      ],
+      "passed": true,
+      "retrievalMs": 224
+    },
+    {
+      "question": "When are orders accepted?",
+      "expectedPage": 1,
+      "unanswerable": false,
+      "abstained": false,
+      "retrievedPages": [
+        1,
+        3,
+        2
+      ],
+      "passed": true,
+      "retrievalMs": 23
+    },
+    {
+      "question": "Within how many calendar days may unopened products be returned?",
+      "expectedPage": 2,
+      "unanswerable": false,
+      "abstained": false,
+      "retrievedPages": [
+        2,
+        3,
+        1
+      ],
+      "passed": true,
+      "retrievalMs": 20
+    },
+    {
+      "question": "Who pays return freight for non-defective products?",
+      "expectedPage": 2,
+      "unanswerable": false,
+      "abstained": false,
+      "retrievedPages": [
+        2,
+        3,
+        1
+      ],
+      "passed": true,
+      "retrievalMs": 37
+    },
+    {
+      "question": "Are custom-assembled items eligible for change-of-mind returns?",
