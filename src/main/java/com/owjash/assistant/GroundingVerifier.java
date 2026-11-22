@@ -4,6 +4,7 @@ import org.springframework.ai.chat.client.ChatClient;
 import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import static com.owjash.assistant.ApiTypes.Source;
 
@@ -46,7 +47,7 @@ public final class GroundingVerifier {
                 + "\n" + entry.getValue().text())
             .collect(Collectors.joining("\n\n---\n\n"));
 
-        Verdict verdict = client.prompt().system(SYSTEM)
+        Verdict verdict = client.prompt().system(Objects.requireNonNull(SYSTEM))
             .user("QUESTION:\n" + question
                 + "\n\nPROPOSED ANSWER (may be wrong):\n" + answer
                 + "\n\nDOCUMENT PASSAGES:\n" + context)
