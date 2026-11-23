@@ -7,7 +7,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import static com.owjash.assistant.ApiTypes.Source;
-//o
+
 public final class GroundingVerifier {
     private GroundingVerifier() {}
 
